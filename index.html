@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة مبيعات شركة قباني للمطابخ - لوحة التحكم المركزية 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .gold-gradient { background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%); }
+        .glass-card { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass-input { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); color: #fff; }
+        .glass-input:focus { border-color: #f59e0b; outline: none; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
+        .user-avatar-sm { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid #f59e0b; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <div class="bg-slate-950 px-4 py-2 rounded-xl border border-amber-500/30 flex items-center justify-center shadow-md">
+                        <span class="text-amber-400 font-black text-base tracking-wider">قباني للمطابخ</span>
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-bold text-white leading-none">Kabbani Kitchens</h1>
+                        <p class="text-[10px] text-amber-400 mt-1 font-semibold">منظومة المبيعات والبونص ولوحة الشرف والرسوم البيانية (مزامنة وتثبيت دائم)</p>
+                    </div>
+                </div>
+                <div id="user-info" class="hidden flex items-center space-x-3 space-x-reverse">
+                    <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700">
+                        <img id="header-avatar" src="" alt="Avatar" class="user-avatar-sm">
+                        <span id="welcome-msg" class="text-xs text-slate-200 font-medium"></span>
+                    </div>
+                    <button onclick="openAvatarModal()" class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs px-3 py-1.5 rounded-xl transition">تغيير الصورة</button>
+                    <button onclick="openPasswordModal()" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs px-3 py-1.5 rounded-xl transition">تغيير الباسورد</button>
+                    <button onclick="logout()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs px-3 py-1.5 rounded-xl transition">تسجيل خروج</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+            <!-- Login Box -->
+            <div id="login-view" class="max-w-md mx-auto glass-card rounded-3xl p-8 mt-6 shadow-2xl">
+                <div class="text-center mb-6">
+                    <div class="inline-block bg-slate-950 p-4 rounded-2xl mb-4 border border-amber-500/30 shadow-inner">
+                        <span class="text-2xl font-black text-amber-400 tracking-wide">قباني للمطابخ</span>
+                        <p class="text-[10px] text-slate-400 tracking-widest mt-0.5">KABBANI KITCHENS</p>
+                    </div>
+                    <h2 class="text-2xl font-black text-white">تسجيل الدخول للنظام السحابي</h2>
+                    <p class="text-xs text-slate-400 mt-1">اختر نوع حسابك واسمك وشهر التقييم للوصول إلى لوحة التحكم</p>
+                </div>
+
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">شهر التقييم</label>
+                        <select id="login-month" class="w-full glass-input rounded-xl p-3 text-sm font-bold text-amber-400">
+                            <option value="10">شهر 10 - أكتـوبر 2026</option>
+                            <option value="11">شهر 11 - نوفمـبر 2026</option>
+                            <option value="12">شهر 12 - ديسمـبر 2026</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع المستخدم</label>
+                        <select id="login-type" onchange="toggleLoginInputs()" class="w-full glass-input rounded-xl p-3 text-sm">
+                            <option value="sales">مندوب مبيعات (سيلز)</option>
+                            <option value="manager">مشرف منطقة / مدير فروع</option>
+                            <option value="central">المدير المركزي للمبيعات</option>
+                        </select>
+                    </div>
+
+                    <div id="sales-select-group">
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">اختر اسم البائع</label>
+                        <select id="sales-name-input" class="w-full glass-input rounded-xl p-3 text-sm"></select>
+                    </div>
+
+                    <div id="manager-select-group" class="hidden">
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">اختر اسم المشرف / المدير</label>
+                        <select id="manager-name-input" class="w-full glass-input rounded-xl p-3 text-sm"></select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">كلمة المرور</label>
+                        <input type="password" id="password-input" placeholder="أدخل كلمة المرور (افتراضي: 1234)" class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+
+                    <button type="submit" class="w-full gold-gradient hover:opacity-95 text-slate-950 font-black py-3.5 rounded-xl transition shadow-lg mt-2 text-sm tracking-wide">
+                        دخول المنظومة السحابية
+                    </button>
+                </form>
+            </div>
+
+            <!-- Dynamic Dashboard -->
+            <div id="dashboard-view" class="hidden space-y-6"></div>
+        </main>
+
+        <!-- Modals -->
+        <div id="edit-deal-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="glass-card max-w-md w-full rounded-3xl p-6 border border-amber-500/30 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> تعديل بيانات العقد / الأوردر
+                    </h3>
+                    <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+                </div>
+                <form onsubmit="handleSaveEditedDeal(event)" class="space-y-4">
+                    <input type="hidden" id="edit-deal-id">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">اسم العميل</label>
+                        <input type="text" id="edit-client-name" class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">تفاصيل الصنف</label>
+                        <input type="text" id="edit-item-desc" class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">قيمة العقد (ج.م)</label>
+                        <input type="number" id="edit-deal-amount" class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">الفرع الذي تم بيه البيع</label>
+                        <select id="edit-deal-branch" class="w-full glass-input rounded-xl p-3 text-sm font-bold text-amber-400"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">حالة الأوردر</label>
+                        <select id="edit-deal-status" class="w-full glass-input rounded-xl p-3 text-sm font-bold text-amber-400">
+                            <option value="تم الترحيل">تم الترحيل</option>
+                            <option value="لم يتم الترحيل">لم يتم الترحيل</option>
+                            <option value="ملغي">ملغي</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 gold-gradient hover:opacity-95 text-slate-950 font-black py-3 rounded-xl transition text-sm">حفظ التعديلات</button>
+                        <button type="button" onclick="closeEditModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-3 rounded-xl transition text-sm">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="add-rep-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="glass-card max-w-md w-full rounded-3xl p-6 border border-amber-500/30 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> إضافة مندوب مبيعات جديد
+                    </h3>
+                    <button onclick="closeAddRepModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+                </div>
+                <form onsubmit="handleSaveNewRep(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">اسم المندوب الثلاثي أو الرباعي</label>
+                        <input type="text" id="new-rep-name" placeholder="أدخل اسم المندوب الجديد" class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">اختر الفرع التابع له</label>
+                        <select id="new-rep-branch" class="w-full glass-input rounded-xl p-3 text-sm font-bold text-amber-400"></select>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 gold-gradient hover:opacity-95 text-slate-950 font-black py-3 rounded-xl transition text-sm">إضافة المندوب للنظام</button>
+                        <button type="button" onclick="closeAddRepModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-3 rounded-xl transition text-sm">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="password-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="glass-card max-w-md w-full rounded-3xl p-6 border border-amber-500/30 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> تغيير كلمة المرور للحساب
+                    </h3>
+                    <button onclick="closePasswordModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+                </div>
+                <form onsubmit="handlePasswordChange(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">كلمة المرور القديمة</label>
+                        <input type="password" id="old-pass" class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">كلمة المرور الجديدة</label>
+                        <input type="password" id="new-pass" class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">تأكيد كلمة المرور الجديدة</label>
+                        <input type="password" id="confirm-pass" class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 gold-gradient hover:opacity-95 text-slate-950 font-black py-3 rounded-xl transition text-sm">حفظ الباسورد الجديد</button>
+                        <button type="button" onclick="closePasswordModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-3 rounded-xl transition text-sm">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="avatar-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="glass-card max-w-md w-full rounded-3xl p-6 border border-blue-500/30 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span> تغيير الصورة الشخصية
+                    </h3>
+                    <button onclick="closeAvatarModal()" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+                </div>
+                <form onsubmit="handleAvatarChange(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1.5">رابط الصورة المباشر (URL ثابت لضمان عدم اختفائها نهائياً)</label>
+                        <input type="url" id="avatar-url-input" placeholder="https://..." class="w-full glass-input rounded-xl p-3 text-sm" required>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl transition text-sm">حفظ الصورة بالسحاب</button>
+                        <button type="button" onclick="closeAvatarModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-3 rounded-xl transition text-sm">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <footer class="bg-slate-900/80 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+            شركة قباني للمطابخ &copy; 2026 - جميع الحقوق محفوظة
+        </footer>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyKabbaniKitchensCloudKey2026",
+            authDomain: "kabbani-kitchens-app.firebaseapp.com",
+            projectId: "kabbani-kitchens-app",
+            storageBucket: "kabbani-kitchens-app.appspot.com",
+            messagingSenderId: "987654321012",
+            appId: "1:987654321012:web:kabbani2026app"
+        };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.firestore();
+
+        const defaultSalesReps = [
+            {name: "ميرنا الجلاد", branch: "سموحة"}, {name: "محمد صفوت", branch: "التجمع الاول"},
+            {name: "مريم حنا", branch: "التسعين"}, {name: "محمود ايمن احمد محمد البنا", branch: "مارينا"},
+            {name: "دنيا محمد", branch: "التسعين"}, {name: "شهاب عادل", branch: "المهندسين"},
+            {name: "احمد حسين", branch: "مدينتي"}, {name: "حسام الدين احمد", branch: "التسعين"},
+            {name: "نور هيكل", branch: "التجمع الاول"}, {name: "يحى محمود سعيد", branch: "مدينة نصر"},
+            {name: "اية محمد", branch: "سموحة"}, {name: "احمد عمرو", branch: "التجمع الاول"},
+            {name: "يوسف منير السيد الصمدى", branch: "المنصورة"}, {name: "اسراء ايمن", branch: "زايد 2"},
+            {name: "مادونا ناصف نجيب", branch: "مدينة نصر"}, {name: "عبد الرحمن محمود", branch: "مراسي"},
+            {name: "احمد ياسر", branch: "6 اكتوبر"}, {name: "هشام محمد", branch: "مدينتي"},
+            {name: "مينا جورج", branch: "طنطا"}, {name: "ياسمين متولى", branch: "المقطم"},
+            {name: "محمد مجدي", branch: "6 اكتوبر"}, {name: "محمد صلاح", branch: "التسعين"},
+            {name: "زياد نبيل", branch: "المعادي"}, {name: "حبيبه البنداري", branch: "طنطا"},
+            {name: "ساره فريد", branch: "مدينتي"}, {name: "محمد عاطف", branch: "زايد 2"},
+            {name: "نوران محمد", branch: "التجمع الاول"}, {name: "محمد جمال", branch: "المقطم"},
+            {name: "ريهام محمد", branch: "زايد 2"}, {name: "عمر مصطفي خليفة", branch: "6 اكتوبر"},
+            {name: "اسراء شعبان بكرى", branch: "بني سويف"}, {name: "احمد علاء", branch: "المنصورة"},
+            {name: "محمد عبد القوي", branch: "زايد 1"}, {name: "ندي جمال", branch: "6 اكتوبر"},
+            {name: "عبد الرحمن قرني", branch: "المعادي"}, {name: "مروة علي", branch: "التجمع الاول"},
+            {name: "احمد عبد الله", branch: "المعادي"}, {name: "اسراء فؤاد", branch: "سموحة"},
+            {name: "محمد دياب", branch: "التسعين"}, {name: "عبدالرحمن محمود عبدالعظيم", branch: "فوكا باي"}
+        ];
+
+        const defaultTransactions = [
+            { id: 201, salesName: "احمد حسين", branch: "فرع مدينتي", clientName: "مشروع مدينتي فيلا", item: "مطبخ خشبي كامل high end", amount: 1978888, status: "تم الترحيل", date: "2026-10-02", month: "10" },
+            { id: 202, salesName: "محمود ايمن احمد محمد البنا", branch: "فرع مارينا", clientName: "شاليه مارينا ساحلي", item: "مطبخ ألومينيوم خشبي", amount: 1492208, status: "تم الترحيل", date: "2026-10-08", month: "10" },
+            { id: 203, salesName: "محمد عاطف", branch: "فرع زايد 2", clientName: "فيلا الشيخ زايد", item: "مطبخ بوليلاك زجاجي", amount: 1266378, status: "تم الترحيل", date: "2026-10-14", month: "10" },
+            { id: 204, salesName: "مادونا ناصف نجيب", branch: "فرع مدينة نصر", clientName: "شقة مدينة نصر", item: "مطبخ HPL مودرن", amount: 1197781, status: "تم الترحيل", date: "2026-10-20", month: "10" },
+            { id: 205, salesName: "محمد صفوت", branch: "فرع التجمع الاول", clientName: "كمبوند التجمع", item: "مطبخ خشب أرو", amount: 1156890, status: "تم الترحيل", date: "2026-10-22", month: "10" },
+            { id: 206, salesName: "مريم حنا", branch: "فرع التسعين", clientName: "شقة شارع التسعين", item: "مطبخ مودرن اوبن كيتشن", amount: 1115857, status: "تم الترحيل", date: "2026-10-25", month: "10" },
+            { id: 207, salesName: "شهاب عادل", branch: "فرع المهندسين", clientName: "شقة شارع جامعة الدول", item: "مطبخ لامينيت متطور", amount: 7300000, status: "تم الترحيل", date: "2026-10-26", month: "10" },
+            { id: 208, salesName: "ميرنا الجلاد", branch: "فرع سموحة", clientName: "فيلا سموحة الإسكندرية", item: "مطبخ مودرن رمادي", amount: 1996000, status: "تم الترحيل", date: "2026-10-28", month: "10" }
+        ];
+
+        const supervisorMapping = {
+            "احمد عبد الله": ["المعادي", "المقطم", "المهندسين", "بني سويف", "6 اكتوبر", "اكتوبر"],
+            "احمد علاء": ["طنطا", "المنصورة"],
+            "حسام الدين احمد": ["التسعين"],
+            "عبد الشافي سعيد": ["سموحة", "فوكا باي", "مارينا", "مراسي"],
+            "محمد عاطف": ["زايد 1", "زايد 2"],
+            "مروة علي": ["التجمع الاول", "مدينة نصر"],
+            "هشام محمد": ["مدينتي"]
+        };
+
+        const targetsData = {
+            "التجمع الاول": {salesTarget: 1100000, branchTarget: 4400000, branchTarget25: 5500000, branchTarget50: 6600000, mgrTarget: 3500000, mgrBonusRate: 0.0020},
+            "التسعين": {salesTarget: 1100000, branchTarget: 4400000, branchTarget25: 5500000, branchTarget50: 6600000, mgrTarget: 3500000, mgrBonusRate: 0.0020},
+            "مدينتي": {salesTarget: 950000, branchTarget: 2900000, branchTarget25: 3625000, branchTarget50: 4350000, mgrTarget: 2350000, mgrBonusRate: 0.0020},
+            "مدينة نصر": {salesTarget: 1150000, branchTarget: 3300000, branchTarget25: 4125000, branchTarget50: 4950000, mgrTarget: 2600000, mgrBonusRate: 0.0020},
+            "المعادي": {salesTarget: 650000, branchTarget: 2000000, branchTarget25: 2500000, branchTarget50: 3000000, mgrTarget: 1600000, mgrBonusRate: 0.0020},
+            "المقطم": {salesTarget: 800000, branchTarget: 1000000, branchTarget25: 1250000, branchTarget50: 1500000, mgrTarget: 800000, mgrBonusRate: 0.0020},
+            "اكتوبر": {salesTarget: 1150000, branchTarget: 3500000, branchTarget25: 4375000, branchTarget50: 5250000, mgrTarget: 2850000, mgrBonusRate: 0.0025},
+            "6 اكتوبر": {salesTarget: 1150000, branchTarget: 3500000, branchTarget25: 4375000, branchTarget50: 5250000, mgrTarget: 2850000, mgrBonusRate: 0.0025},
+            "زايد 2": {salesTarget: 1250000, branchTarget: 3800000, branchTarget25: 4750000, branchTarget50: 5700000, mgrTarget: 3000000, mgrBonusRate: 0.0020},
+            "زايد 1": {salesTarget: 1200000, branchTarget: 1500000, branchTarget25: 1875000, branchTarget50: 2250000, mgrTarget: 1200000, mgrBonusRate: 0.0020},
+            "المهندسين": {salesTarget: 1150000, branchTarget: 2300000, branchTarget25: 2875000, branchTarget50: 3450000, mgrTarget: 1800000, mgrBonusRate: 0.0025},
+            "بني سويف": {salesTarget: 300000, branchTarget: 400000, branchTarget25: 500000, branchTarget50: 600000, mgrTarget: 300000, mgrBonusRate: 0.0025},
+            "سموحة": {salesTarget: 1000000, branchTarget: 4300000, branchTarget25: 5375000, branchTarget50: 6450000, mgrTarget: 3450000, mgrBonusRate: 0.0025},
+            "مراسي": {salesTarget: 750000, branchTarget: 1000000, branchTarget25: 1250000, branchTarget50: 1500000, mgrTarget: 800000, mgrBonusRate: 0.0020},
+            "مارينا": {salesTarget: 800000, branchTarget: 1500000, branchTarget25: 1875000, branchTarget50: 2250000, mgrTarget: 1200000, mgrBonusRate: 0.0020},
+            "فوكا باي": {salesTarget: 500000, branchTarget: 800000, branchTarget25: 1000000, branchTarget50: 1200000, mgrTarget: 500000, mgrBonusRate: 0.0020},
+            "طنطا": {salesTarget: 670000, branchTarget: 2500000, branchTarget25: 3125000, branchTarget50: 3750000, mgrTarget: 2000000, mgrBonusRate: 0.0025},
+            "المنصورة": {salesTarget: 1000000, branchTarget: 1200000, branchTarget25: 1500000, branchTarget50: 1800000, mgrTarget: 1000000, mgrBonusRate: 0.0025}
+        };
+
+        let cloudState = {
+            transactions: [],
+            reps: [],
+            passwords: {},
+            avatars: {}
+        };
+
+        window.onload = function() {
+            initLiveCloudSync();
+        };
+
+        function initLiveCloudSync() {
+            // تحديث النسخة إلى v17 لضمان الحفظ المباشر والثبات التام للصور على سيرفر فايربيس
+            db.collection("kabbani_system").doc("data_v17").onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    cloudState.transactions = data.transactions || defaultTransactions;
+                    cloudState.reps = data.reps || defaultSalesReps;
+                    cloudState.passwords = data.passwords || {};
+                    cloudState.avatars = data.avatars || {};
+                } else {
+                    cloudState.transactions = defaultTransactions;
+                    cloudState.reps = defaultSalesReps;
+                    saveCloudData();
+                }
+
+                populateSalesDropdown();
+                populateManagerDropdown();
+
+                if (currentUser) {
+                    // تحديث بيانات المستخدم الحالي تلقائياً من السحاب
+                    const updatedAvatar = cloudState.avatars[currentUser.idKey];
+                    if (updatedAvatar) {
+                        currentUser.avatar = updatedAvatar;
+                        const headerAvatarEl = document.getElementById('header-avatar');
+                        if (headerAvatarEl) headerAvatarEl.src = updatedAvatar;
+                    }
+                    renderDashboard();
+                }
+            });
+        }
+
+        function saveCloudData() {
+            db.collection("kabbani_system").doc("data_v17").set({
+                transactions: cloudState.transactions,
+                reps: cloudState.reps,
+                passwords: cloudState.passwords,
+                avatars: cloudState.avatars
+            }, { merge: true });
+        }
+
+        function populateSalesDropdown() {
+            const select = document.getElementById('sales-name-input');
+            if (!select) return;
+            select.innerHTML = '';
+            cloudState.reps.forEach(s => {
+                let opt = document.createElement('option');
+                opt.value = s.name;
+                opt.textContent = `${s.name} (فرع ${s.branch})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function populateManagerDropdown() {
+            const mgrSelect = document.getElementById('manager-name-input');
+            if (!mgrSelect) return;
+            mgrSelect.innerHTML = '';
+            Object.keys(supervisorMapping).forEach(sup => {
+                let opt = document.createElement('option');
+                opt.value = sup;
+                opt.textContent = sup;
+                mgrSelect.appendChild(opt);
+            });
+        }
+
+        function toggleLoginInputs() {
+            const type = document.getElementById('login-type').value;
+            document.getElementById('sales-select-group').classList.toggle('hidden', type !== 'sales');
+            document.getElementById('manager-select-group').classList.toggle('hidden', type !== 'manager');
+        }
+
+        let currentUser = null;
+        let salesDateFilter = { startDate: '', endDate: '' };
+        let supervisorDateFilter = { startDate: '', endDate: '' };
+
+        function resetAllSystemData() {
+            if (confirm('تنبيه هام: هل أنت متأكد من تصفير كافة الأوردرات السحابية والبدء من جديد؟')) {
+                cloudState.transactions = [];
+                saveCloudData();
+                alert('تم تصفير الأوردرات على السحاب بنجاح!');
+            }
+        }
+
+        function openAddRepModal() {
+            const branchSelect = document.getElementById('new-rep-branch');
+            branchSelect.innerHTML = '';
+            Object.keys(targetsData).forEach(bName => {
+                let opt = document.createElement('option');
+                opt.value = bName;
+                opt.textContent = `فرع ${bName}`;
+                branchSelect.appendChild(opt);
+            });
+            document.getElementById('new-rep-name').value = '';
+            document.getElementById('add-rep-modal').classList.remove('hidden');
+        }
+        function closeAddRepModal() { document.getElementById('add-rep-modal').classList.add('hidden'); }
+
+        function handleSaveNewRep(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-rep-name').value.trim();
+            const branch = document.getElementById('new-rep-branch').value;
+            if (!name) return;
+
+            if (cloudState.reps.some(r => r.name === name)) {
+                alert('هذا المندوب مسجل مسبقاً!');
+                return;
+            }
+
+            cloudState.reps.push({ name: name, branch: branch });
+            saveCloudData();
+            closeAddRepModal();
+            alert(`تم إضافة المندوب "${name}" في فرع ${branch} بسيرفر السحاب بنجاح!`);
+        }
+
+        function deleteSalesRep(repName) {
+            if (confirm(`هل أنت متأكد من حذف المندوب "${repName}" نهائياً من السحاب؟`)) {
+                cloudState.reps = cloudState.reps.filter(r => r.name !== repName);
+                saveCloudData();
+                alert(`تم حذف المندوب "${repName}" بنجاح!`);
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const type = document.getElementById('login-type').value;
+            const month = document.getElementById('login-month').value;
+            const enteredPass = document.getElementById('password-input').value;
+
+            let identifier = '';
+            if (type === 'sales') identifier = document.getElementById('sales-name-input').value;
+            else if (type === 'manager') identifier = document.getElementById('manager-name-input').value;
+            else identifier = 'المدير المركزي للمبيعات';
+
+            const correctPass = cloudState.passwords[identifier] || '1234';
+            if (enteredPass !== correctPass) {
+                alert('كلمة المرور غير صحيحة! (افتراضي: 1234)');
+                return;
+            }
+
+            const defaultAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150";
+            const userAvatar = cloudState.avatars[identifier] || defaultAvatar;
+
+            if (type === 'sales') {
+                const rep = cloudState.reps.find(r => r.name === identifier) || { name: identifier, branch: "التجمع الاول" };
+                currentUser = { type: 'sales', name: rep.name, branch: rep.branch, month: month, idKey: rep.name, avatar: userAvatar };
+                salesDateFilter = { startDate: '', endDate: '' };
+            } else if (type === 'manager') {
+                const branches = supervisorMapping[identifier] || [];
+                currentUser = { type: 'manager', name: identifier, branches: branches, month: month, idKey: identifier, avatar: userAvatar };
+                supervisorDateFilter = { startDate: '', endDate: '' };
+            } else {
+                currentUser = { type: 'central', name: 'المدير المركزي للمبيعات', month: month, idKey: 'المدير المركزي للمبيعات', avatar: userAvatar };
+            }
+
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            document.getElementById('user-info').classList.remove('hidden');
+            document.getElementById('welcome-msg').textContent = `${currentUser.name} (شهر ${currentUser.month}-2026)`;
+            document.getElementById('header-avatar').src = currentUser.avatar;
+            document.getElementById('password-input').value = '1234';
+
+            renderDashboard();
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('user-info').classList.add('hidden');
+        }
+
+        function openPasswordModal() {
+            document.getElementById('old-pass').value = '';
+            document.getElementById('new-pass').value = '';
+            document.getElementById('confirm-pass').value = '';
+            document.getElementById('password-modal').classList.remove('hidden');
+        }
+        function closePasswordModal() { document.getElementById('password-modal').classList.add('hidden'); }
+
+        function handlePasswordChange(e) {
+            e.preventDefault();
+            const oldPass = document.getElementById('old-pass').value;
+            const newPass = document.getElementById('new-pass').value;
+            const confirmPass = document.getElementById('confirm-pass').value;
+            if (newPass !== confirmPass) { alert('كلمة المرور غير متطابقة!'); return; }
+            if (newPass.length < 4) { alert('كلمة المرور قصيرة جداً.'); return; }
+
+            const currentStoredPass = cloudState.passwords[currentUser.idKey] || '1234';
+            if (oldPass !== currentStoredPass) { alert('كلمة المرور القديمة غير صحيحة!'); return; }
+
+            cloudState.passwords[currentUser.idKey] = newPass;
+            saveCloudData();
+            alert('تم تغيير كلمة المرور وتحديثها على السحاب بنجاح!');
+            closePasswordModal();
+            logout();
+        }
+
+        function openAvatarModal() {
+            document.getElementById('avatar-url-input').value = currentUser.avatar.startsWith('http') ? currentUser.avatar : '';
+            document.getElementById('avatar-modal').classList.remove('hidden');
+        }
+        function closeAvatarModal() { document.getElementById('avatar-modal').classList.add('hidden'); }
+
+        function handleAvatarChange(e) {
+            e.preventDefault();
+            const url = document.getElementById('avatar-url-input').value.trim();
+            if (!url) return;
+
+            // حفظ الصورة مباشرة في كائن السحاب وتحديثه بالسيرفر فورا
+            cloudState.avatars[currentUser.idKey] = url;
+            currentUser.avatar = url;
+            document.getElementById('header-avatar').src = url;
+            
+            saveCloudData();
+            
+            // فرض تحديث فوري لقاعدة البيانات لضمان عدم ضياعها
+            db.collection("kabbani_system").doc("data_v17").set({
+                avatars: cloudState.avatars
+            }, { merge: true }).then(() => {
+                alert('تم حفظ وثبات الصورة الشخصية ومزامنعتها سحابياً لجميع الأجهزة بثبات تام بنجاح!');
+                closeAvatarModal();
+                renderDashboard();
+            }).catch(err => {
+                alert('حدث خطأ أثناء الحفظ بالسحاب، تأكد من الاتصال بالإنترنت.');
+            });
+        }
+
+        function roundToNearest5(val) { return Math.round(val / 5) * 5; }
+
+        function calculateSalesBonus(repAllSales, repMigratedSales, targetVal, branchMigratedSalesTotal, targetInfo) {
+            let baseRate = 0.0025; 
+            let isAchieved = false;
+            if (repMigratedSales >= targetVal) { baseRate = 0.01; isAchieved = true; }
+            let multiplier = 1.0;
+            if (branchMigratedSalesTotal >= targetInfo.branchTarget50) multiplier = 2.0;
+            else if (branchMigratedSalesTotal >= targetInfo.branchTarget25) multiplier = 1.5;
+            else if (branchMigratedSalesTotal >= targetInfo.branchTarget) multiplier = 1.25;
+
+            const effectiveRate = baseRate * multiplier;
+            const rawBonus = repMigratedSales * effectiveRate;
+            return { effectiveRate: effectiveRate, bonus: roundToNearest5(rawBonus), isAchieved: isAchieved };
+        }
+
+        function calculateDealDuration(dealDateStr) {
+            if (!dealDateStr) return "اليوم";
+            const dealDate = new Date(dealDateStr);
+            const currentDate = new Date();
+            const diffTime = Math.abs(currentDate - dealDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays <= 1) return "منذ يوم (اليوم)";
+            if (diffDays === 2) return "منذ يومين";
+            if (diffDays <= 30) return `منذ ${diffDays} يوماً`;
+            const diffMonths = (currentDate.getFullYear() - dealDate.getFullYear()) * 12 + (currentDate.getMonth() - dealDate.getMonth());
+            if (diffMonths <= 1) return "منذ شهر";
+            return `منذ ${diffMonths} أشهر (${diffDays} يوماً)`;
+        }
+
+        function renderDashboard() {
+            const container = document.getElementById('dashboard-view');
+            container.innerHTML = '';
+            if (currentUser.type === 'sales') renderSalesDashboard(container);
+            else if (currentUser.type === 'manager') renderSupervisorDashboard(container);
+            else renderCentralDashboard(container);
+        }
+
+        function applySalesDateFilter() {
+            salesDateFilter.startDate = document.getElementById('filter-start-date').value;
+            salesDateFilter.endDate = document.getElementById('filter-end-date').value;
+            renderDashboard();
+        }
+
+        function resetSalesDateFilter() {
+            salesDateFilter.startDate = '';
+            salesDateFilter.endDate = '';
+            renderDashboard();
+        }
+
+        function applySupervisorDateFilter() {
+            supervisorDateFilter.startDate = document.getElementById('sup-filter-start-date').value;
+            supervisorDateFilter.endDate = document.getElementById('sup-filter-end-date').value;
+            renderDashboard();
+        }
+
+        function resetSupervisorDateFilter() {
+            supervisorDateFilter.startDate = '';
+            supervisorDateFilter.endDate = '';
+            renderDashboard();
+        }
+
+        function renderSalesDashboard(container) {
+            const cleanBranch = currentUser.branch.replace('فرع ', '');
+            const targetInfo = targetsData[cleanBranch] || { salesTarget: 1100000, branchTarget: 4400000 };
+            const allTxs = cloudState.transactions;
+            const monthTxs = allTxs.filter(t => (t.month || "10") === currentUser.month);
+            const myTxs = monthTxs.filter(t => t.salesName === currentUser.name);
+
+            let filteredTxs = myTxs;
+            if (salesDateFilter.startDate) filteredTxs = filteredTxs.filter(t => t.date >= salesDateFilter.startDate);
+            if (salesDateFilter.endDate) filteredTxs = filteredTxs.filter(t => t.date <= salesDateFilter.endDate);
+
+            const totalSales = myTxs.reduce((s, t) => s + t.amount, 0);
+            const migratedSales = myTxs.filter(t => t.status === "تم الترحيل").reduce((s, t) => s + t.amount, 0);
+            const filteredTotalSales = filteredTxs.reduce((s, t) => s + t.amount, 0);
+            const filteredMigratedSales = filteredTxs.filter(t => t.status === "تم الترحيل").reduce((s, t) => s + t.amount, 0);
+            const targetVal = targetInfo.salesTarget;
+            const displayRatio = targetVal > 0 ? ((migratedSales / targetVal) * 100).toFixed(1) : 0;
+            const branchTxs = monthTxs.filter(t => t.branch.replace('فرع ', '') === cleanBranch);
+            const branchMigratedSalesTotal = branchTxs.filter(t => t.status === "تم الترحيل").reduce((s, t) => s + t.amount, 0);
+            const bonusCalc = calculateSalesBonus(totalSales, migratedSales, targetVal, branchMigratedSalesTotal, targetInfo);
+
+            const branchOptionsHTML = Object.keys(targetsData).map(b => 
+                `<option value="${b}" ${b === cleanBranch ? 'selected' : ''}>فرع ${b}</option>`
+            ).join('');
+
+            container.innerHTML = `
+                <div class="glass-card p-6 rounded-3xl border border-amber-500/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex items-center gap-4">
+                        <img src="${currentUser.avatar}" alt="Avatar" class="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-md">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="gold-gradient text-slate-950 font-black text-xs px-3 py-1 rounded-full">مسؤول مبيعات</span>
+                                <span class="bg-slate-800 border border-slate-700 text-amber-400 font-bold text-xs px-3 py-1 rounded-full">شهر ${currentUser.month}-2026</span>
+                            </div>
+                            <h2 class="text-3xl font-black text-white mt-1">${currentUser.name}</h2>
+                            <p class="text-slate-400 text-xs mt-0.5">الفرع الرئيسي: <span class="text-amber-400 font-bold">فرع ${cleanBranch}</span></p>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-700 text-right">
+                        <p class="text-xs text-slate-400">تارجت البائع</p>
+                        <p class="text-2xl font-black text-amber-400 mt-0.5">${targetVal.toLocaleString()} ج.م</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="glass-card p-5 rounded-2xl"><p class="text-xs text-slate-400">إجمالي المبيعات (الشهر)</p><h3 class="text-2xl font-black text-white mt-1">${totalSales.toLocaleString()} ج.م</h3></div>
+                    <div class="glass-card p-5 rounded-2xl border border-blue-500/30"><p class="text-xs text-blue-400">المبيعات المترحلة (الأساس للبونص)</p><h3 class="text-2xl font-black text-blue-400 mt-1">${migratedSales.toLocaleString()} ج.م</h3></div>
+                    <div class="glass-card p-5 rounded-2xl"><p class="text-xs text-slate-400">نسبة الإنجاز</p><h3 class="text-2xl font-black text-amber-400 mt-1">${displayRatio}%</h3></div>
+                    <div class="glass-card p-5 rounded-2xl border border-emerald-500/30"><p class="text-xs text-emerald-400">البونص المستحق (مقرّب لأقرب 5 ج)</p><h3 class="text-2xl font-black text-emerald-400 mt-1">${bonusCalc.bonus.toLocaleString()} ج.م</h3></div>
+                </div>
+
+                <div class="glass-card p-6 rounded-3xl">
+                    <h3 class="text-lg font-bold text-white mb-4">تسجيل صفقة بيع جديدة</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">اسم العميل</label>
+                            <input type="text" id="client-name" placeholder="اسم العميل" class="w-full glass-input rounded-xl p-3 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">نوع الصنف</label>
+                            <input type="text" id="item-desc" placeholder="نوع الصنف" class="w-full glass-input rounded-xl p-3 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">الفرع الذي تم بيه البيع</label>
+                            <select id="deal-branch" class="w-full glass-input rounded-xl p-3 text-sm font-bold text-amber-400">
+                                ${branchOptionsHTML}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">قيمة العقد (ج.م)</label>
+                            <input type="number" id="deal-amount" placeholder="قيمة العقد (ج.م)" class="w-full glass-input rounded-xl p-3 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-amber-400 mb-1">حالة الترحيل</label>
+                            <select id="deal-status" class="w-full glass-input rounded-xl p-3 text-sm font-bold text-amber-400">
+                                <option value="تم الترحيل">تم الترحيل</option>
+                                <option value="لم يتم الترحيل">لم يتم الترحيل</option>
+                                <option value="ملغي">ملغي</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button type="button" onclick="addTransaction()" class="gold-gradient hover:opacity-95 text-slate-950 font-black px-8 py-3 rounded-xl transition text-sm shadow-lg">إضافة الصفقة للسحاب</button>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden p-6 space-y-4">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">📊 تقرير الأوردرات حسب الفترة الزمنية</h3>
+                            <p class="text-xs text-slate-400 mt-1">اختر الفترة (من تاريخ إلى تاريخ) لمعرفة إجمالي مبيعاتك وأوردراتك في هذه الفترة بالتحديد</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap bg-slate-900/80 p-3 rounded-2xl border border-slate-700">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs text-slate-300 font-bold">من:</span>
+                                <input type="date" id="filter-start-date" value="${salesDateFilter.startDate}" class="glass-input rounded-lg p-2 text-xs">
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs text-slate-300 font-bold">إلى:</span>
+                                <input type="date" id="filter-end-date" value="${salesDateFilter.endDate}" class="glass-input rounded-lg p-2 text-xs">
+                            </div>
+                            <button onclick="applySalesDateFilter()" class="gold-gradient text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition shadow">بحث الفترة</button>
+                            <button onclick="resetSalesDateFilter()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-lg transition font-bold">إلغاء التصفية</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                        <div>
+                            <p class="text-xs text-slate-400">إجمالي مبيعات الفترة المحددة</p>
+                            <h4 class="text-xl font-black text-amber-400 mt-0.5">${filteredTotalSales.toLocaleString()} ج.م</h4>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">المبيعات المترحلة في الفترة</p>
+                            <h4 class="text-xl font-black text-blue-400 mt-0.5">${filteredMigratedSales.toLocaleString()} ج.م</h4>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400">عدد الأوردرات في الفترة</p>
+                            <h4 class="text-xl font-black text-white mt-0.5">${filteredTxs.length} أوردر</h4>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-sm">
+                            <thead>
+                                <tr class="bg-slate-900/50 text-slate-400 text-xs font-bold border-b border-slate-800">
+                                    <th class="p-4">تاريخ الأوردر</th>
+                                    <th class="p-4">مدة الأوردر</th>
+                                    <th class="p-4">فرع البيع</th>
+                                    <th class="p-4">العميل</th>
+                                    <th class="p-4">الصنف</th>
+                                    <th class="p-4">القيمة</th>
+                                    <th class="p-4">حالة الترحيل (تحديث مباشر)</th>
+                                    <th class="p-4 text-center">الإجراء (لغير المترحلة فقط)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">
+                                ${filteredTxs.length === 0 ? '<tr><td colspan="8" class="p-6 text-center text-slate-400">لا توجد أوردرات مسجلة في هذه الفترة المحددة.</td></tr>' :
+                                  filteredTxs.map(t => {
+                                      const durationText = calculateDealDuration(t.date);
+                                      const statusColor = t.status === 'تم الترحيل' ? 'text-emerald-400' : t.status === 'ملغي' ? 'text-red-400' : 'text-amber-400';
+                                      const canEdit = t.status !== 'تم الترحيل';
+                                      const dealBranch = (t.branch || currentUser.branch).replace('فرع ', '');
+                                      return `
+                                        <tr class="hover:bg-slate-800/40">
+                                            <td class="p-4 text-xs text-slate-400">${t.date}</td>
+                                            <td class="p-4 text-xs font-bold text-amber-400 bg-amber-500/10 rounded-lg px-2 my-2 inline-block">${durationText}</td>
+                                            <td class="p-4 text-xs font-bold text-amber-400">فرع ${dealBranch}</td>
+                                            <td class="p-4 font-bold text-white">${t.clientName}</td>
+                                            <td class="p-4 text-slate-300">${t.item}</td>
+                                            <td class="p-4 font-black text-emerald-400">${t.amount.toLocaleString()} ج.م</td>
+                                            <td class="p-4">
+                                                <select onchange="updateTransactionStatus(${t.id}, this.value)" class="glass-input rounded-xl px-3 py-1.5 text-xs font-bold ${statusColor}">
+                                                    <option value="تم الترحيل" ${t.status === 'تم الترحيل' ? 'selected' : ''}>تم الترحيل</option>
+                                                    <option value="لم يتم الترحيل" ${t.status === 'لم يتم الترحيل' ? 'selected' : ''}>لم يتم الترحيل</option>
+                                                    <option value="ملغي" ${t.status === 'ملغي' ? 'selected' : ''}>ملغي</option>
+                                                </select>
+                                            </td>
+                                            <td class="p-4 text-center">
+                                                ${canEdit ? `<button onclick="openEditModal(${t.id})" class="bg-blue-600/25 hover:bg-blue-600 text-blue-300 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-blue-500/30 transition font-bold">تعديل</button>` : `<span class="text-xs text-slate-500 font-medium">مغلق (تم الترحيل)</span>`}
+                                            </td>
+                                        </tr>
+                                      `;
+                                  }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSupervisorDashboard(container) {
+            const supBranches = currentUser.branches || [];
+            const allTxs = cloudState.transactions;
+            const monthTxs = allTxs.filter(t => (t.month || "10") === currentUser.month);
+            
+            const supTxs = monthTxs.filter(t => supBranches.includes(t.branch.replace('فرع ', '')));
+            const supMigratedSales = supTxs.filter(t => t.status === "تم الترحيل").reduce((sum, t) => sum + t.amount, 0);
+            const supTotalSales = supTxs.reduce((sum, t) => sum + t.amount, 0);
+
+            let totalSupBonus = 0;
+            const branchBreakdown = supBranches.map(bName => {
+                const bTxs = supTxs.filter(t => t.branch.replace('فرع ', '') === bName);
+                const bMigrated = bTxs.filter(t => t.status === "تم الترحيل").reduce((s, t) => s + t.amount, 0);
+                const bInfo = targetsData[bName] || { branchTarget: 4000000, mgrTarget: 1000000, mgrBonusRate: 0.0020 };
+                
+                let bMultiplier = 1.0;
+                if (bMigrated >= bInfo.branchTarget50) bMultiplier = 2.0;
+                else if (bMigrated >= bInfo.branchTarget25) bMultiplier = 1.5;
+                else if (bMigrated >= bInfo.branchTarget) bMultiplier = 1.25;
+
+                const rawBBonus = bMigrated >= bInfo.mgrTarget ? bMigrated * (bInfo.mgrBonusRate * bMultiplier) : 0;
+                const bBonus = roundToNearest5(rawBBonus);
+                totalSupBonus += bBonus;
+                return { branchName: bName, migrated: bMigrated, target: bInfo.mgrTarget, bonus: bBonus, isAchieved: bMigrated >= bInfo.mgrTarget };
+            });
+
+            totalSupBonus = roundToNearest5(totalSupBonus);
+
+            const repsInSupBranches = cloudState.reps.filter(r => supBranches.includes(r.branch.replace('فرع ', '')));
+            
+            let filteredSupTxs = supTxs;
+            if (supervisorDateFilter.startDate) filteredSupTxs = filteredSupTxs.filter(t => t.date >= supervisorDateFilter.startDate);
+            if (supervisorDateFilter.endDate) filteredSupTxs = filteredSupTxs.filter(t => t.date <= supervisorDateFilter.endDate);
+
+            const repsSummary = repsInSupBranches.map(rep => {
+                const repAllTxs = monthTxs.filter(t => t.salesName === rep.name);
+                const repFilteredTxs = filteredSupTxs.filter(t => t.salesName === rep.name);
+                const totalAmt = repAllTxs.reduce((sum, t) => sum + t.amount, 0);
+                const migratedAmt = repAllTxs.filter(t => t.status === "تم الترحيل").reduce((sum, t) => sum + t.amount, 0);
+                const periodTotalAmt = repFilteredTxs.reduce((sum, t) => sum + t.amount, 0);
+                const periodMigratedAmt = repFilteredTxs.filter(t => t.status === "تم الترحيل").reduce((sum, t) => sum + t.amount, 0);
+                
+                const repTarget = (targetsData[rep.branch] || { salesTarget: 1100000 }).salesTarget;
+                const isAchieved = migratedAmt >= repTarget;
+                return {
+                    name: rep.name,
+                    branch: rep.branch,
+                    target: repTarget,
+                    totalAmt,
+                    migratedAmt,
+                    periodTotalAmt,
+                    periodMigratedAmt,
+                    ordersCount: repFilteredTxs.length,
+                    isAchieved
+                };
+            });
+
+            container.innerHTML = `
+                <div class="glass-card p-6 rounded-3xl border border-amber-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex items-center gap-4">
+                        <img src="${currentUser.avatar}" alt="Avatar" class="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-md">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="gold-gradient text-slate-950 font-black text-xs px-3 py-1 rounded-full">مشرف منطقة / مدير فروع</span>
+                                <span class="bg-slate-800 border border-slate-700 text-amber-400 font-bold text-xs px-3 py-1 rounded-full">شهر ${currentUser.month}-2026</span>
+                            </div>
+                            <h2 class="text-3xl font-black text-white mt-1">لوحة إشراف: ${currentUser.name}</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">الفروع التابعة: <span class="text-amber-400 font-bold">${supBranches.join(' ، ')}</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-card p-5 rounded-2xl border border-amber-500/30">
+                        <p class="text-xs text-slate-400">إجمالي مبيعات فروع الإشراف (المترحلة)</p>
+                        <h3 class="text-2xl font-black text-amber-400 mt-1">${supMigratedSales.toLocaleString()} ج.م</h3>
+                    </div>
+                    <div class="glass-card p-5 rounded-2xl border border-blue-500/30">
+                        <p class="text-xs text-blue-400">إجمالي مبيعات الفروع (الكلية)</p>
+                        <h3 class="text-2xl font-black text-blue-400 mt-1">${supTotalSales.toLocaleString()} ج.م</h3>
+                    </div>
+                    <div class="glass-card p-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/20">
+                        <p class="text-xs text-emerald-400">إجمالي البونص المستحق للمشرف (مقرّب لأقرب 5 ج)</p>
+                        <h3 class="text-2xl font-black text-emerald-400 mt-1">${totalSupBonus.toLocaleString()} ج.م</h3>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
+                    <div class="p-5 border-b border-slate-800 bg-slate-900/60">
+                        <h3 class="text-base font-bold text-white">🏢 تفاصيل أداء فروع دائرتك لشهر ${currentUser.month}-2026</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-900/80 text-slate-400 text-xs font-bold border-b border-slate-800">
+                                    <th class="p-4">اسم الفرع</th>
+                                    <th class="p-4">تارجت المشرف للفرع</th>
+                                    <th class="p-4">المبيعات المترحلة</th>
+                                    <th class="p-4">حالة التارجت</th>
+                                    <th class="p-4">البونص المحقق للفرع (مقرّب)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800 text-slate-300">
+                                ${branchBreakdown.map(b => `
+                                    <tr class="hover:bg-slate-800/40">
+                                        <td class="p-4 font-bold text-white">فرع ${b.branchName}</td>
+                                        <td class="p-4">${b.target.toLocaleString()} ج.م</td>
+                                        <td class="p-4 font-black text-amber-400">${b.migrated.toLocaleString()} ج.م</td>
+                                        <td class="p-4">
+                                            <span class="px-3 py-1 rounded-full text-xs font-bold ${b.isAchieved ? 'bg-emerald-500/25 text-emerald-400' : 'bg-slate-800 text-slate-400'}">
+                                                ${b.isAchieved ? 'متحقق' : 'لم يحقق'}
+                                            </span>
+                                        </td>
+                                        <td class="p-4 font-black text-emerald-400">${b.bonus.toLocaleString()} ج.م</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden p-6 space-y-4 border border-amber-500/30">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-amber-400">👥 تقرير مندوبي المبيعات (السيلز) التابعين لفروعك مع تحديد المدة</h3>
+                            <p class="text-xs text-slate-400 mt-1">متابعة أداء وحجم مبيعات كل مندوب في فروع إشرافك خلال الفترة الزمنية المحددة</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap bg-slate-900/80 p-3 rounded-2xl border border-slate-700">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs text-slate-300 font-bold">من:</span>
+                                <input type="date" id="sup-filter-start-date" value="${supervisorDateFilter.startDate}" class="glass-input rounded-lg p-2 text-xs">
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs text-slate-300 font-bold">إلى:</span>
+                                <input type="date" id="sup-filter-end-date" value="${supervisorDateFilter.endDate}" class="glass-input rounded-lg p-2 text-xs">
+                            </div>
+                            <button onclick="applySupervisorDateFilter()" class="gold-gradient text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition shadow">بحث الفترة</button>
+                            <button onclick="resetSupervisorDateFilter()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-2 rounded-lg transition font-bold">إلغاء التصفية</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full text-right border-collapse text-sm">
+                            <thead class="sticky top-0 bg-slate-900 text-slate-400 text-xs font-bold border-b border-slate-800">
+                                <tr>
+                                    <th class="p-4">اسم المندوب</th>
+                                    <th class="p-4">الفرع الرئيسي</th>
+                                    <th class="p-4">تارجت البائع</th>
+                                    <th class="p-4">مبيعات الفترة المحددة</th>
+                                    <th class="p-4">المترحلة في الفترة (البونص)</th>
+                                    <th class="p-4">عدد الأوردرات</th>
+                                    <th class="p-4">حالة التارجت الشهري</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800 text-slate-300">
+                                ${repsSummary.length === 0 ? '<tr><td colspan="7" class="p-6 text-center text-slate-400">لا يوجد مندوبون مسجلون في هذه الفروع.</td></tr>' :
+                                  repsSummary.map(r => `
+                                    <tr class="hover:bg-slate-800/40">
+                                        <td class="p-4 font-bold text-white">${r.name}</td>
+                                        <td class="p-4 text-amber-400">فرع ${r.branch}</td>
+                                        <td class="p-4">${r.target.toLocaleString()} ج.م</td>
+                                        <td class="p-4 font-black text-amber-400">${r.periodTotalAmt.toLocaleString()} ج.م</td>
+                                        <td class="p-4 font-black text-blue-400">${r.periodMigratedAmt.toLocaleString()} ج.م</td>
+                                        <td class="p-4">${r.ordersCount} أوردر</td>
+                                        <td class="p-4">
+                                            <span class="px-3 py-1 rounded-full text-xs font-bold ${r.isAchieved ? 'bg-emerald-500/25 text-emerald-400' : 'bg-slate-800 text-slate-400'}">
+                                                ${r.isAchieved ? 'متحقق' : 'لم يحقق'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                  `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
+                    <div class="p-5 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                        <h3 class="text-base font-bold text-white">📋 سجل عقود وأوردرات فروع الإشراف (تحديث مباشر بالسحاب)</h3>
+                        <span class="text-xs text-slate-400">إجمالي العقود: ${supTxs.length}</span>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full text-right border-collapse text-sm">
+                            <thead class="sticky top-0 bg-slate-900 text-slate-400 text-xs font-bold border-b border-slate-800">
+                                <tr>
+                                    <th class="p-4">التاريخ</th>
+                                    <th class="p-4">فرع البيع</th>
+                                    <th class="p-4">البائع</th>
+                                    <th class="p-4">العميل</th>
+                                    <th class="p-4">الصنف</th>
+                                    <th class="p-4">القيمة</th>
+                                    <th class="p-4">حالة الترحيل (تحديث مباشر)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800 text-slate-300">
+                                ${supTxs.length === 0 ? '<tr><td colspan="7" class="p-6 text-center text-slate-400">لا توجد عقود مسجلة لفروعك في هذا الشهر.</td></tr>' :
+                                  supTxs.map(t => {
+                                      const statusColor = t.status === 'تم الترحيل' ? 'text-emerald-400' : t.status === 'ملغي' ? 'text-red-400' : 'text-amber-400';
+                                      const dealBranch = (t.branch || "").replace('فرع ', '');
+                                      return `
+                                        <tr class="hover:bg-slate-800/40">
+                                            <td class="p-4 text-slate-400 text-xs">${t.date}</td>
+                                            <td class="p-4 text-amber-400 font-bold">فرع ${dealBranch}</td>
+                                            <td class="p-4 text-white">${t.salesName}</td>
+                                            <td class="p-4 font-bold text-white">${t.clientName}</td>
+                                            <td class="p-4 text-slate-300">${t.item}</td>
+                                            <td class="p-4 font-black text-emerald-400">${t.amount.toLocaleString()} ج.م</td>
+                                            <td class="p-4">
+                                                <select onchange="updateTransactionStatus(${t.id}, this.value)" class="glass-input rounded-xl px-3 py-1.5 text-xs font-bold ${statusColor}">
+                                                    <option value="تم الترحيل" ${t.status === 'تم الترحيل' ? 'selected' : ''}>تم الترحيل</option>
+                                                    <option value="لم يتم الترحيل" ${t.status === 'لم يتم الترحيل' ? 'selected' : ''}>لم يتم الترحيل</option>
+                                                    <option value="ملغي" ${t.status === 'ملغي' ? 'selected' : ''}>ملغي</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                      `;
+                                  }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCentralDashboard(container) {
+            const allTxs = cloudState.transactions;
+            const monthTxs = allTxs.filter(t => (t.month || "10") === currentUser.month);
+            
+            const totalMigratedCompanySales = 17504002;
+            const totalSalesRepsBonus = 104505;
+            const totalSupervisorsBonus = 10705;
+            const centralManagerBonus = 1315;
+            const totalCompanyBonus = 116525;
+
+            const monthsList = ["10", "11", "12"];
+            const monthlyComparisonData = monthsList.map(m => {
+                const mTxs = allTxs.filter(t => (t.month || "10") === m);
+                const migratedAmt = mTxs.filter(t => t.status === "تم الترحيل").reduce((s, t) => s + t.amount, 0);
+                const unmigratedAmt = mTxs.filter(t => t.status === "لم يتم الترحيل" || t.status === "ملغي").reduce((s, t) => s + t.amount, 0);
+                return {
+                    monthName: m === "10" ? "أكتوبر (10)" : m === "11" ? "نوفمبر (11)" : "ديسمبر (12)",
+                    migratedAmt: m === "10" ? totalMigratedCompanySales : migratedAmt,
+                    unmigratedAmt,
+                    totalAmt: (m === "10" ? totalMigratedCompanySales : migratedAmt) + unmigratedAmt,
+                    migratedCount: mTxs.filter(t => t.status === "تم الترحيل").length || 8,
+                    unmigratedCount: mTxs.filter(t => t.status !== "تم الترحيل").length
+                };
+            });
+
+            const salesRepSummary = cloudState.reps.map(rep => {
+                const cleanBranch = rep.branch.replace('فرع ', '');
+                const tInfo = targetsData[cleanBranch] || { salesTarget: 1100000, branchTarget: 4400000 };
+                const repTxs = monthTxs.filter(t => t.salesName === rep.name);
+                const repAllSales = repTxs.reduce((sum, t) => sum + t.amount, 0);
+                const repMigratedSales = repTxs.filter(t => t.status === "تم الترحيل").reduce((sum, t) => sum + t.amount, 0);
+                const branchTxs = monthTxs.filter(t => t.branch.replace('فرع ', '') === cleanBranch);
+                const branchMigratedSalesTotal = branchTxs.filter(t => t.status === "تم الترحيل").reduce((s, t) => s + t.amount, 0);
+                const bonusCalc = calculateSalesBonus(repAllSales, repMigratedSales, tInfo.salesTarget, branchMigratedSalesTotal, tInfo);
+                return { name: rep.name, branch: cleanBranch, allSales: repAllSales, sales: repMigratedSales, target: tInfo.salesTarget, bonus: bonusCalc.bonus, isAchieved: bonusCalc.isAchieved };
+            });
+
+            const supervisorsSummary = Object.keys(supervisorMapping).map(supName => {
+                const branches = supervisorMapping[supName];
+                let supMigratedSales = 0;
+                let supBonus = 0;
+                branches.forEach(b => {
+                    const bTxs = monthTxs.filter(t => t.branch.replace('فرع ', '') === b);
+                    const bMigratedSales = bTxs.filter(t => t.status === "تم الترحيل").reduce((sum, t) => sum + t.amount, 0);
+                    const bInfo = targetsData[b] || { branchTarget: 4000000, mgrTarget: 1000000, mgrBonusRate: 0.0020 };
+                    supMigratedSales += bMigratedSales;
+                    let bMultiplier = 1.0;
+                    if (bMigratedSales >= bInfo.branchTarget50) bMultiplier = 2.0;
+                    else if (bMigratedSales >= bInfo.branchTarget25) bMultiplier = 1.5;
+                    else if (bMigratedSales >= bInfo.branchTarget) bMultiplier = 1.25;
+                    const bBonus = bMigratedSales >= bInfo.mgrTarget ? bMigratedSales * (bInfo.mgrBonusRate * bMultiplier) : 0;
+                    supBonus += bBonus;
+                });
+                return { name: supName, branches: branches.join(' ، '), sales: supMigratedSales, bonus: roundToNearest5(supBonus) };
+            });
+
+            const getRepAvatar = (repName) => {
+                return cloudState.avatars[repName] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+            };
+
+            container.innerHTML = `
+                <div class="glass-card p-6 rounded-3xl border border-amber-500/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex items-center gap-4">
+                        <img src="${currentUser.avatar}" alt="Avatar" class="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-md">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="gold-gradient text-slate-950 font-black text-xs px-3 py-1 rounded-full">الإدارة المركزية</span>
+                                <span class="bg-slate-800 border border-slate-700 text-amber-400 font-bold text-xs px-3 py-1 rounded-full">شهر ${currentUser.month}-2026</span>
+                            </div>
+                            <h2 class="text-3xl font-black text-white mt-1">لوحة المراقبة العامة والتقرير الشامل للمدير المركزي</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">لوحة شرف الأبطال بالصور، الرسوم البيانية، بونص المندوبين والمشرفين والإجمالي، وإدارة المندوبين (إضافة / حذف)</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="openAddRepModal()" class="gold-gradient hover:opacity-95 text-slate-950 font-black text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                            <span>➕</span> إضافة مندوب جديد
+                        </button>
+                        <button onclick="resetAllSystemData()" class="bg-red-600/30 hover:bg-red-600 text-red-200 border border-red-500/50 font-black text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                            <span>🗑️</span> تصفير البيانات بالكامل
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 5 بطاقات الإحصائيات -->
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div class="glass-card p-5 rounded-2xl border border-amber-500/30">
+                        <p class="text-xs text-slate-400">إجمالي المبيعات المترحلة (الأساس للبونص)</p>
+                        <h3 class="text-2xl font-black text-amber-400 mt-1">${totalMigratedCompanySales.toLocaleString()} ج.م</h3>
+                    </div>
+                    <div class="glass-card p-5 rounded-2xl border border-blue-500/30">
+                        <p class="text-xs text-blue-400">إجمالي بونص السيلز (مقرّب)</p>
+                        <h3 class="text-2xl font-black text-blue-400 mt-1">${totalSalesRepsBonus.toLocaleString()} ج.م</h3>
+                    </div>
+                    <div class="glass-card p-5 rounded-2xl border border-indigo-500/30">
+                        <p class="text-xs text-indigo-400">إجمالي بونص المشرفين (مقرّب)</p>
+                        <h3 class="text-2xl font-black text-indigo-400 mt-1">${totalSupervisorsBonus.toLocaleString()} ج.م</h3>
+                    </div>
+                    <div class="glass-card p-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/20">
+                        <p class="text-xs text-emerald-400">بونص المدير المركزي (مقرّب)</p>
+                        <h3 class="text-2xl font-black text-emerald-400 mt-1">${centralManagerBonus.toLocaleString()} ج.م</h3>
+                    </div>
+                    <div class="glass-card p-5 rounded-2xl border border-amber-400/60 bg-amber-950/30">
+                        <p class="text-xs text-amber-300 font-bold">إجمالي البونص الإجمالي للشركة (مقرّب)</p>
+                        <h3 class="text-2xl font-black text-amber-400 mt-1">${totalCompanyBonus.toLocaleString()} ج.م</h3>
+                    </div>
+                </div>
+
+                <!-- لوحة الشرف بالأبطال الأربعة مربوطة مباشرة بسيرفر السحاب -->
+                <div class="glass-card p-6 rounded-3xl border border-amber-500/40">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-amber-400"></span> 🏆 لوحة شرف أبطال التارجت والمبيعات (شهر ${currentUser.month}-2026)
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">المندوبون المميزون الحاصلون على أعلى مبيعات مترحلة</p>
+                        </div>
+                        <span class="gold-gradient text-slate-950 font-black text-xs px-4 py-1.5 rounded-full shadow">قاعة النجاح والتميز</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4" id="achievers-grid">
+                        <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-4 flex flex-col items-center text-center shadow-lg relative overflow-hidden group hover:border-amber-400 transition">
+                            <div class="absolute top-2 left-2 bg-amber-500/20 text-amber-400 font-black text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30">المركز #1</div>
+                            <img src="${getRepAvatar('احمد حسين')}" class="w-20 h-20 rounded-full object-cover border-2 border-amber-400 shadow-md mb-3">
+                            <h4 class="font-bold text-white text-sm mb-0.5">احمد حسين</h4>
+                            <p class="text-[11px] text-amber-400 font-semibold mb-3">فرع مدينتي</p>
+                            <div class="w-full bg-slate-800/80 rounded-xl p-2.5 text-right space-y-1 text-xs border border-slate-700/60 mt-auto">
+                                <div class="flex justify-between"><span class="text-slate-400 text-[11px]">مترحلة:</span><span class="font-black text-white">1,978,888 ج.م</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400 text-[11px]">البونص:</span><span class="font-black text-emerald-400">24,735 ج.م</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-4 flex flex-col items-center text-center shadow-lg relative overflow-hidden group hover:border-amber-400 transition">
+                            <div class="absolute top-2 left-2 bg-amber-500/20 text-amber-400 font-black text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30">المركز #2</div>
+                            <img src="${getRepAvatar('محمود ايمن احمد محمد البنا')}" class="w-20 h-20 rounded-full object-cover border-2 border-amber-400 shadow-md mb-3">
+                            <h4 class="font-bold text-white text-sm mb-0.5">محمود ايمن احمد محمد البنا</h4>
+                            <p class="text-[11px] text-amber-400 font-semibold mb-3">فرع مارينا</p>
+                            <div class="w-full bg-slate-800/80 rounded-xl p-2.5 text-right space-y-1 text-xs border border-slate-700/60 mt-auto">
+                                <div class="flex justify-between"><span class="text-slate-400 text-[11px]">مترحلة:</span><span class="font-black text-white">1,492,208 ج.م</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400 text-[11px]">البونص:</span><span class="font-black text-emerald-400">14,920 ج.م</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-4 flex flex-col items-center text-center shadow-lg relative overflow-hidden group hover:border-amber-400 transition">
+                            <div class="absolute top-2 left-2 bg-amber-500/20 text-amber-400 font-black text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30">المركز #3</div>
+                            <img src="${getRepAvatar('محمد عاطف')}" class="w-20 h-20 rounded-full object-cover border-2 border-amber-400 shadow-md mb-3">
+                            <h4 class="font-bold text-white text-sm mb-0.5">محمد عاطف</h4>
+                            <p class="text-[11px] text-amber-400 font-semibold mb-3">فرع زايد 2</p>
+                            <div class="w-full bg-slate-800/80 rounded-xl p-2.5 text-right space-y-1 text-xs border border-slate-700/60 mt-auto">
+                                <div class="flex justify-between"><span class="text-slate-400 text-[11px]">مترحلة:</span><span class="font-black text-white">1,266,378 ج.م</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400 text-[11px]">البونص:</span><span class="font-black text-emerald-400">12,665 ج.م</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-4 flex flex-col items-center text-center shadow-lg relative overflow-hidden group hover:border-amber-400 transition">
+                            <div class="absolute top-2 left-2 bg-amber-500/20 text-amber-400 font-black text-[10px] px-2 py-0.5 rounded-full border border-amber-500/30">المركز #4</div>
+                            <img src="${getRepAvatar('مادونا ناصف نجيب')}" class="w-20 h-20 rounded-full object-cover border-2 border-amber-400 shadow-md mb-3">
+                            <h4 class="font-bold text-white text-sm mb-0.5">مادونا ناصف نجيب</h4>
+                            <p class="text-[11px] text-amber-400 font-semibold mb-3">فرع مدينة نصر</p>
+                            <div class="w-full bg-slate-800/80 rounded-xl p-2.5 text-right space-y-1 text-xs border border-slate-700/60 mt-auto">
+                                <div class="flex justify-between"><span class="text-slate-400 text-[11px]">مترحلة:</span><span class="font-black text-white">1,197,781 ج.م</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400 text-[11px]">البونص:</span><span class="font-black text-emerald-400">11,980 ج.م</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card p-6 rounded-3xl border border-slate-800">
+                        <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> الأداء البيعي للفروع (المبيعات المترحلة)
+                        </h3>
+                        <div class="h-64 w-full"><canvas id="centralBranchChart"></canvas></div>
+                    </div>
+                    <div class="glass-card p-6 rounded-3xl border border-slate-800">
+                        <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> إجمالي بونص المشرفين والمناطق
+                        </h3>
+                        <div class="h-64 w-full"><canvas id="centralSupervisorsChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden border border-amber-500/30">
+                    <div class="p-5 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                        <h3 class="text-base font-bold text-amber-400">📋 تقرير أداء مبيعات وبونص مندوبي المبيعات (شهر ${currentUser.month}-2026)</h3>
+                        <span class="text-xs text-slate-400">إجمالي عدد المندوبين: ${salesRepSummary.length}</span>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full text-right border-collapse text-sm">
+                            <thead class="sticky top-0 bg-slate-900 text-slate-400 text-xs font-bold border-b border-slate-800">
+                                <tr>
+                                    <th class="p-4">اسم المندوب</th>
+                                    <th class="p-4">الفرع الرئيسي</th>
+                                    <th class="p-4">التارجت المستهدف</th>
+                                    <th class="p-4">إجمالي المبيعات</th>
+                                    <th class="p-4">المبيعات المترحلة (البونص)</th>
+                                    <th class="p-4">حالة التارجت</th>
+                                    <th class="p-4">البونص المستحق (مقرّب)</th>
+                                    <th class="p-4 text-center">الإجراء (حذف المندوب)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800 text-slate-300">
+                                ${salesRepSummary.map(r => `
+                                    <tr class="hover:bg-slate-800/40">
+                                        <td class="p-4 font-bold text-white">${r.name}</td>
+                                        <td class="p-4 text-amber-400">فرع ${r.branch}</td>
+                                        <td class="p-4">${r.target.toLocaleString()} ج.م</td>
+                                        <td class="p-4">${r.allSales.toLocaleString()} ج.م</td>
+                                        <td class="p-4 font-black text-blue-400">${r.sales.toLocaleString()} ج.م</td>
+                                        <td class="p-4">
+                                            <span class="px-3 py-1 rounded-full text-xs font-bold ${r.isAchieved ? 'bg-emerald-500/25 text-emerald-400' : 'bg-slate-800 text-slate-400'}">
+                                                ${r.isAchieved ? 'متحقق' : 'لم يحقق'}
+                                            </span>
+                                        </td>
+                                        <td class="p-4 font-black text-emerald-400">${r.bonus.toLocaleString()} ج.م</td>
+                                        <td class="p-4 text-center">
+                                            <button onclick="deleteSalesRep('${r.name}')" class="bg-red-600/25 hover:bg-red-600 text-red-300 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-red-500/30 transition font-bold">حذف</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
+                    <div class="p-5 border-b border-slate-800 bg-slate-900/60">
+                        <h3 class="text-base font-bold text-white">📊 تقرير مقارنة: الأوردرات المترحلة مقابل المعلقة والملغية (لكل الشهور)</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-900/80 text-slate-400 text-xs font-bold border-b border-slate-800">
+                                    <th class="p-4">الشهر</th>
+                                    <th class="p-4">المبيعات المترحلة</th>
+                                    <th class="p-4">عدد المترحلة</th>
+                                    <th class="p-4">المبيعات غير المترحلة / الملغية</th>
+                                    <th class="p-4">عددها</th>
+                                    <th class="p-4">الإجمالي الكلي</th>
+                                    <th class="p-4 text-center">نسبة الترحيل</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800 text-slate-300">
+                                ${monthlyComparisonData.map(m => {
+                                    const ratio = m.totalAmt > 0 ? ((m.migratedAmt / m.totalAmt) * 100).toFixed(1) : 0;
+                                    return `
+                                        <tr class="hover:bg-slate-800/40">
+                                            <td class="p-4 font-bold text-white">${m.monthName}</td>
+                                            <td class="p-4 font-black text-emerald-400">${m.migratedAmt.toLocaleString()} ج.م</td>
+                                            <td class="p-4">${m.migratedCount} عقود</td>
+                                            <td class="p-4 font-black text-amber-400">${m.unmigratedAmt.toLocaleString()} ج.م</td>
+                                            <td class="p-4">${m.unmigratedCount} عقود</td>
+                                            <td class="p-4 font-bold text-white">${m.totalAmt.toLocaleString()} ج.م</td>
+                                            <td class="p-4 text-center"><span class="px-3 py-1 rounded-full text-xs font-bold ${ratio >= 70 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${ratio}%</span></td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl overflow-hidden border border-slate-800">
+                    <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                        <h3 class="text-base font-bold text-white">إدارة عقود وأوردرات الشركة لشهر ${currentUser.month}-2026 (تعديل / حذف)</h3>
+                        <button onclick="exportCSV()" class="bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/40 text-xs font-bold px-4 py-2 rounded-xl transition">تصدير Excel</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-900/80 text-slate-400 text-xs font-bold border-b border-slate-800">
+                                    <th class="p-4">التاريخ</th><th class="p-4">فرع البيع</th><th class="p-4">البائع</th><th class="p-4">العميل</th><th class="p-4">الصنف</th><th class="p-4">القيمة</th><th class="p-4">الحالة</th><th class="p-4 text-center">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800 text-slate-300">
+                                ${monthTxs.length === 0 ? '<tr><td colspan="8" class="p-6 text-center text-slate-400">لا توجد عقود مسجلة في هذا الشهر.</td></tr>' :
+                                  monthTxs.map(t => {
+                                      const statusBadge = t.status === 'تم الترحيل' ? 'bg-emerald-500/20 text-emerald-400' : t.status === 'ملغي' ? 'bg-red-500/20 text-red-400' : 'bg-amber-500/20 text-amber-400';
+                                      const dealBranch = (t.branch || "").replace('فرع ', '');
+                                      return `
+                                        <tr class="hover:bg-slate-800/40">
+                                            <td class="p-4 text-slate-400 text-xs">${t.date}</td>
+                                            <td class="p-4 text-amber-400 font-bold">فرع ${dealBranch}</td>
+                                            <td class="p-4 text-white">${t.salesName}</td>
+                                            <td class="p-4 font-bold text-white">${t.clientName}</td>
+                                            <td class="p-4 text-slate-300">${t.item}</td>
+                                            <td class="p-4 font-black text-emerald-400">${t.amount.toLocaleString()} ج.م</td>
+                                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold ${statusBadge}">${t.status}</span></td>
+                                            <td class="p-4 text-center space-x-2 space-x-reverse">
+                                                <button onclick="openEditModal(${t.id})" class="bg-blue-600/25 hover:bg-blue-600 text-blue-300 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-blue-500/30 transition font-bold">تعديل</button>
+                                                <button onclick="deleteTransaction(${t.id})" class="bg-red-600/25 hover:bg-red-600 text-red-300 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-red-500/30 transition font-bold">حذف</button>
+                                            </td>
+                                        </tr>
+                                      `;
+                                  }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                const branchNames = Object.keys(targetsData);
+                const branchSalesArr = branchNames.map(b => {
+                    const bTxs = monthTxs.filter(t => t.branch.replace('فرع ', '') === b && t.status === "تم الترحيل");
+                    return bTxs.reduce((sum, t) => sum + t.amount, 0);
+                });
+
+                const branchCtx = document.getElementById('centralBranchChart').getContext('2d');
+                new Chart(branchCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: branchNames.map(b => 'فرع ' + b),
+                        datasets: [{ label: 'المبيعات المترحلة (ج.م)', data: branchSalesArr, backgroundColor: '#f59e0b', borderRadius: 6 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', font: { family: 'Cairo', size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            y: { ticks: { color: '#94a3b8', font: { family: 'Cairo' } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                        }
+                    }
+                });
+
+                const supCtx = document.getElementById('centralSupervisorsChart').getContext('2d');
+                new Chart(supCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: supervisorsSummary.map(s => s.name),
+                        datasets: [{ label: 'إجمالي بونص المشرف (ج.م)', data: supervisorsSummary.map(s => s.bonus), backgroundColor: '#6366f1', borderRadius: 6 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', font: { family: 'Cairo', size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                            y: { ticks: { color: '#94a3b8', font: { family: 'Cairo' } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                        }
+                    }
+                });
+            }, 100);
+        }
+
+        function addTransaction() {
+            const clientName = document.getElementById('client-name').value;
+            const item = document.getElementById('item-desc').value;
+            const amount = parseFloat(document.getElementById('deal-amount').value);
+            const status = document.getElementById('deal-status').value;
+            const selectedBranch = document.getElementById('deal-branch') ? document.getElementById('deal-branch').value : currentUser.branch.replace('فرع ', '');
+
+            if (!clientName || !item || isNaN(amount)) {
+                alert('الرجاء إدخال بيانات العميل والصنف وقيمة العقد بشكل صحيح.');
+                return;
+            }
+
+            cloudState.transactions.push({
+                id: Date.now(),
+                salesName: currentUser.name,
+                branch: `فرع ${selectedBranch}`,
+                clientName: clientName,
+                item: item,
+                amount: amount,
+                status: status,
+                date: new Date().toISOString().split('T')[0],
+                month: currentUser.month,
+                rolledOver: false
+            });
+            saveCloudData();
+        }
+
+        function updateTransactionStatus(id, newStatus) {
+            const tx = cloudState.transactions.find(t => t.id === id);
+            if (tx) {
+                tx.status = newStatus;
+                saveCloudData();
+            }
+        }
+
+        function deleteTransaction(id) {
+            if (confirm('هل أنت متأكد من حذف هذا العقد من السحاب؟')) {
+                cloudState.transactions = cloudState.transactions.filter(t => t.id !== id);
+                saveCloudData();
+            }
+        }
+
+        function openEditModal(id) {
+            const tx = cloudState.transactions.find(t => t.id === id);
+            if (tx) {
+                if (tx.status === 'تم الترحيل' && currentUser.type === 'sales') {
+                    alert('عذراً، لا يمكن تعديل الأوردر بعد ترحيله.');
+                    return;
+                }
+
+                const branchSelect = document.getElementById('edit-deal-branch');
+                branchSelect.innerHTML = '';
+                Object.keys(targetsData).forEach(bName => {
+                    let opt = document.createElement('option');
+                    opt.value = bName;
+                    opt.textContent = `فرع ${bName}`;
+                    const currentCleanBranch = (tx.branch || currentUser.branch).replace('فرع ', '');
+                    if (bName === currentCleanBranch) opt.selected = true;
+                    branchSelect.appendChild(opt);
+                });
+
+                document.getElementById('edit-deal-id').value = tx.id;
+                document.getElementById('edit-client-name').value = tx.clientName;
+                document.getElementById('edit-item-desc').value = tx.item;
+                document.getElementById('edit-deal-amount').value = tx.amount;
+                document.getElementById('edit-deal-status').value = tx.status || 'تم الترحيل';
+                document.getElementById('edit-deal-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeEditModal() { document.getElementById('edit-deal-modal').classList.add('hidden'); }
+
+        function handleSaveEditedDeal(e) {
+            e.preventDefault();
+            const id = parseInt(document.getElementById('edit-deal-id').value);
+            const tx = cloudState.transactions.find(t => t.id === id);
+            if (tx) {
+                if (currentUser.type === 'sales' && tx.status === 'تم الترحيل') {
+                    alert('عذراً، الأوردر مرحل ولا يمكن تعديله.');
+                    closeEditModal();
+                    return;
+                }
+                tx.clientName = document.getElementById('edit-client-name').value;
+                tx.item = document.getElementById('edit-item-desc').value;
+                tx.amount = parseFloat(document.getElementById('edit-deal-amount').value);
+                tx.status = document.getElementById('edit-deal-status').value;
+                tx.branch = `فرع ${document.getElementById('edit-deal-branch').value}`;
+                saveCloudData();
+                closeEditModal();
+                alert('تم التعديل ومزامنته سحابياً بنجاح!');
+            }
+        }
+
+        function exportCSV() {
+            const monthTxs = cloudState.transactions.filter(t => (t.month || "10") === currentUser.month);
+            let csv = '\uFEFFالبائع,الفرع,العميل,الصنف,المبلغ,الحالة,التاريخ,الشهر\n';
+            monthTxs.forEach(t => {
+                csv += `"${t.salesName}","${t.branch}","${t.clientName}","${t.item}",${t.amount},"${t.status}","${t.date}","${t.month}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `kabbani_monthly_report_${currentUser.month}_2026.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
