@@ -314,7 +314,6 @@
         };
 
         function initLiveCloudSync() {
-            // تحديث النسخة إلى v17 لضمان الحفظ المباشر والثبات التام للصور على سيرفر فايربيس
             db.collection("kabbani_system").doc("data_v17").onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
@@ -332,7 +331,6 @@
                 populateManagerDropdown();
 
                 if (currentUser) {
-                    // تحديث بيانات المستخدم الحالي تلقائياً من السحاب
                     const updatedAvatar = cloudState.avatars[currentUser.idKey];
                     if (updatedAvatar) {
                         currentUser.avatar = updatedAvatar;
@@ -520,22 +518,23 @@
             const url = document.getElementById('avatar-url-input').value.trim();
             if (!url) return;
 
-            // حفظ الصورة مباشرة في كائن السحاب وتحديثه بالسيرفر فورا
             cloudState.avatars[currentUser.idKey] = url;
             currentUser.avatar = url;
-            document.getElementById('header-avatar').src = url;
             
-            saveCloudData();
-            
-            // فرض تحديث فوري لقاعدة البيانات لضمان عدم ضياعها
+            const headerAvatarEl = document.getElementById('header-avatar');
+            if (headerAvatarEl) headerAvatarEl.src = url;
+
             db.collection("kabbani_system").doc("data_v17").set({
+                transactions: cloudState.transactions,
+                reps: cloudState.reps,
+                passwords: cloudState.passwords,
                 avatars: cloudState.avatars
             }, { merge: true }).then(() => {
-                alert('تم حفظ وثبات الصورة الشخصية ومزامنعتها سحابياً لجميع الأجهزة بثبات تام بنجاح!');
+                alert('تم حفظ الصورة الشخصية في السحاب بنجاح تام ولن تختفي أبداً!');
                 closeAvatarModal();
                 renderDashboard();
             }).catch(err => {
-                alert('حدث خطأ أثناء الحفظ بالسحاب، تأكد من الاتصال بالإنترنت.');
+                alert('حدث خطأ أثناء حفظ الصورة، تأكد من الاتصال بالإنترنت.');
             });
         }
 
@@ -1078,7 +1077,6 @@
                     </div>
                 </div>
 
-                <!-- 5 بطاقات الإحصائيات -->
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div class="glass-card p-5 rounded-2xl border border-amber-500/30">
                         <p class="text-xs text-slate-400">إجمالي المبيعات المترحلة (الأساس للبونص)</p>
@@ -1102,7 +1100,6 @@
                     </div>
                 </div>
 
-                <!-- لوحة الشرف بالأبطال الأربعة مربوطة مباشرة بسيرفر السحاب -->
                 <div class="glass-card p-6 rounded-3xl border border-amber-500/40">
                     <div class="flex justify-between items-center mb-6">
                         <div>
